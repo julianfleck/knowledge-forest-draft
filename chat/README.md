@@ -2,43 +2,54 @@
 
 ## What this module does
 
-Connects the system to where humans actually talk — Discord for
-the POC, but designed so other platforms (Signal, Slack, Telegram)
-are not foreclosed.
+Connects the system to where humans actually talk. The first
+target is **Discord** — the bot watches a designated channel,
+picks up messages that contain shareable resources (links, file
+uploads), and turns them into share events the rest of the system
+can act on.
 
-Everything the world sees of the system happens here: a share
-event arrives because someone posted a link in Discord; a flag
-from a personal agent shows up here as a DM; the supervisor's
-"I noted this" reply lands here.
+For the POC this is a straightforward Discord bot integration —
+one of the standard libraries (`discord.py` for Python, or
+`discord.js` for Node.js) wired up to listen for the events we
+care about. No bespoke bot framework needed.
 
-## How it works (sketch)
+The shape is platform-agnostic enough that other places (Signal,
+Slack, etc.) could be added later, but the POC is Discord-only.
 
-For every message that contains a resource (link, upload, etc.),
-the bot opens a Discord thread on that message. Replies on that
-thread become additional context events on the same resource's
-log (see `event-log/`). This keeps related context consolidated
-and out of the main channel's torrent.
+## How it works
 
-Threading is decided for Discord (Q2). Other platforms inherit
-the metaphor — if a platform has threads, use them; if not, fall
-back to message references.
+For every message that contains a resource, the bot opens a
+**Discord thread** on that message. Replies on the thread become
+additional context events on the same resource's log (see
+[`../event-log/`](../event-log/)). Threading keeps related
+conversation consolidated and out of the main channel's noise.
+
+Threading is the chosen pattern. Other platforms inherit the
+metaphor — if the platform has threads (e.g. Slack), use them; if
+not, fall back to message references or quote-replies.
 
 ## What it owns
 
-- A `DiscordClient` (or similar) class that handles the connection
-  + message events + thread creation
-- A `Resource` extractor that detects when a message contains a
-  shareable thing
-- The bridge that turns Discord events into `event-log/` writes
-  (and outputs from agents into Discord messages)
+- A Discord client class that handles the connection, the message
+  events, and the thread creation
+- A small "is this a resource?" detector for each incoming
+  message (extracts URLs and file uploads)
+- The bridge that turns Discord events into write operations
+  against [`../event-log/`](../event-log/), and turns agent
+  outputs into Discord messages (DMs, thread replies)
 
 ## Who talks to it
 
-- `routing/` reads incoming events and dispatches to agents
-- `agents/` write outputs back through chat (DMs, thread replies)
-- `event-log/` is the persistence layer downstream of every event
+- [`routing/`](../routing/) reads the events this module emits
+  and decides which agents to wake
+- [`agents/`](../agents/) write outputs back through this module
+- [`event-log/`](../event-log/) is the persistence layer
+  downstream of every event
 
 ## Open
 
 - Threading is decided for share events. Open: do we also thread
-  on KEEP events ("I kept this") or do those just go to DMs?
+  on KEEP events (a recipient saying "I kept this resource into
+  my garden") or do those just go to direct messages? Default
+  leaning: DM-only, to avoid cluttering the share thread with
+  many "I kept this" replies.

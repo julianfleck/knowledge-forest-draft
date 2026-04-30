@@ -1,81 +1,99 @@
 # Knowledge Forest POC — module sketch
 
-This file proposes the **module structure** for the kf-poc — a
-2-week MVP testing whether a 6-dimension context frame around
-shared resources reduces information overload for atlasresearch
-(Christina, Corey, Josh).
+This file proposes the module structure for the Knowledge Forest
+POC — a 2-week MVP testing whether a small structured frame
+around shared resources reduces information overload for
+atlasresearch (Christina, Corey, Julian).
 
-The READMEs in each module are the design surface. **Code follows
-once the contracts are settled.** Schemas already drafted live in
-[`schemas/`](./schemas/); module READMEs reference them.
+The READMEs in each module are the design surface. Code follows
+once the contracts are settled. Until then, schemas live as
+markdown plus example JSON in [`schemas/`](./schemas/), and
+modules live as READMEs that describe what each part does and
+how it talks to the others.
 
-This sketch is the output of the 2026-04-30 alignment pass. It
-postdates [`briefing.md`](./briefing.md) (project context) and the
-04-17 vintage schemas in [`schemas/`](./schemas/). Where the 04-23
-meeting moved decisions or surfaced new requirements, the relevant
-module README flags it.
-
-## Modules (proposed)
+## Modules + ownership
 
 | Module | Owner | What it does |
 |--------|-------|--------------|
-| [`schemas/`](./schemas/) | @kf-lead | Contractual integration shapes (4 drafts from 04-17 + the 6-dim placeholder from Christina) |
-| [`routing/`](./routing/README.md) | @kf-eng | Decides which agent handles which incoming event |
-| [`orchestration/`](./orchestration/README.md) | @kf-eng | How agents run (claude-code-key + tmux, metasphere-style) |
-| [`agents/`](./agents/README.md) | @kf-lead | supervisor + personal-agent-N templates |
-| [`chat/`](./chat/README.md) | @kf-lead | Discord client + thread-per-share-event bridge |
-| [`event-log/`](./event-log/README.md) | @kf-lead | Append-only resource history (git-commit-log shape) |
-| [`fingerprint/`](./fingerprint/README.md) | @kf-lead | Per-channel + per-user semantic snapshots |
+| [`schemas/`](./schemas/) | Julian | The shared shapes — the six-dimension context frame, webhook event payloads, agent handover briefings |
+| [`routing/`](./routing/README.md) | Julian | Decides which agent handles which incoming event |
+| [`orchestration/`](./orchestration/README.md) | Julian | Spawns and runs the agents (one persistent terminal session per agent) |
+| [`agents/`](./agents/README.md) | Christina | The supervisor + per-user personal agent templates |
+| [`fingerprint/`](./fingerprint/README.md) | Christina | Per-channel and per-user semantic snapshots that drive matching |
+| [`chat/`](./chat/README.md) | Corey | Discord client + the thread-per-share-event bridge |
+| [`event-log/`](./event-log/README.md) | Corey | Append-only history of what happened to each shared resource |
 
-This is a **proposal**, not a commitment. Two of these modules
-(`event-log/`, `fingerprint/`) go beyond Julian's initial sketch
-— they were called out explicitly in the 2026-04-23 meeting as
-named needs. `schemas/` is preserved (plural) from the existing
-04-17 drafts. **Tell us if this is over-modularized.**
+Ownership is the **action lead** for the module — who advances the
+design and the implementation. This is a starting allocation; if
+something feels mis-cast, swap in the meeting. The split is meant
+to put each person on the surfaces they're already most engaged
+with: Christina on the meaning-axis (the agent's reasoning + the
+fingerprint roll-up), Corey on the engineering surfaces (the bot
++ the storage log), Julian on the integration shapes + how
+everything is run.
 
-## Decided (locked since the 2026-04-30 reply)
+## Decisions to date
 
-- **Q1: No event-log branching** for the POC. Linear history per
+From the 2026-04-23 meeting and follow-ups:
+
+- **No event-log branching for the POC.** Linear history per
   resource.
-- **Q2: Thread-per-share-event** in Discord. The bot opens a thread
-  on every message containing a resource; replies become context
-  events on the same log.
-- **Q4: Manual keep only.** Personal agents may flag matching
-  content; the user always pulls the trigger on what enters the
-  personal knowledge garden.
-- **Q6: Per-channel + per-user fingerprints**, updated after N
-  share events. Tracking how the snapshot shifts between updates
-  is itself signal.
+- **Thread-per-share-event in Discord.** The bot opens a thread
+  on every message that contains a resource; replies become
+  context events on the same log.
+- **Manual keep only.** Personal agents may flag matching
+  content; the user always pulls the trigger on what enters
+  their personal knowledge garden.
+- **Per-channel and per-user fingerprints, updated every N share
+  events.** Tracking how the snapshot shifts between updates is
+  itself signal.
+- **`why` is the only human-authored field of the six-dimension
+  frame.** All five other fields are automatic or derived.
 
 ## Open for the meeting
 
-Each open question lives in the relevant module README. Quick
-index:
+Each open question lives in the relevant README. Quick index:
 
-- **Q3 — frame recursion**: zero or one layer? The 04-17
-  six-dim-frame-placeholder didn't anticipate this. Need to update
-  `schemas/six-dim-frame-placeholder.md` once Christina lands her
-  draft.
-- **Q5 — `how`/`why` human-required**: gate or hint? See
-  [`agents/README.md`](./agents/README.md). The 04-17 briefing
-  said `why` is the only manual field; 04-23 + 04-30 reopened it.
-- **Fingerprint shape**: keyword list vs LLM interpretation vs
-  hybrid? Julian leans LLM-as-simpler. See
-  [`fingerprint/README.md`](./fingerprint/README.md).
-- **Harness architecture**: tmux+claude-code recommended;
-  alternatives sketched. See
+- **Frame recursion** — should a `why` value itself be parseable
+  as a nested frame, capped at one layer? See
+  [`schemas/six-dim-frame.md`](./schemas/six-dim-frame.md).
+- **Fingerprint shape** — keyword list vs language-model
+  interpretation vs hybrid? See
+  [`fingerprint/README.md`](./fingerprint/README.md). Julian's
+  current lean: language-model interpretation, simpler to
+  achieve.
+- **Harness architecture** — terminal-session-per-agent is the
+  current recommendation; alternatives are sketched. See
   [`orchestration/README.md`](./orchestration/README.md).
-- **Module shape itself**: is this 7-module split right? Should
-  `event-log/` fold into `chat/`? Should `fingerprint/` fold into
-  `agents/`? Discuss.
+- **Module shape itself** — is this 7-module split right?
+  Should `event-log/` fold into `chat/`? Should `fingerprint/`
+  fold into `agents/`? Worth a 5-minute discussion.
 
-## What's NOT here
+## Module shape — the proposal vs Julian's initial sketch
 
-- **Schema refresh for 04-23 + 04-30 decisions.** The existing
-  schemas in [`schemas/`](./schemas/) predate the directionality
-  insight (sender vs recipient sides), the recursion question, and
-  the append-only event-log shape. They need a refresh — but per
-  the persona's stance, schema design awaits Christina's frame
-  draft + meeting alignment. Holding.
-- **Code.** None. README-level only. Code follows once contracts
+Julian's first sketch named four modules (`routing/`,
+`orchestration/`, `agents/`, `chat/`) plus an open *what else?*
+This proposal adds three more:
+
+- `schemas/` — kept as its own folder because the integration
+  shapes are the load-bearing artifacts; humans and agents both
+  read them.
+- `event-log/` — surfaced explicitly in the meeting as a needed
+  storage layer (the "git-commit-log per resource" shape).
+- `fingerprint/` — surfaced in the meeting as the source of the
+  semantic match in the `where` Layer 2.
+
+If two of these feel over-modularized at meeting-time, the
+fold-in candidates are: `event-log/` → `chat/`, and
+`fingerprint/` → `agents/`. `schemas/` should stay separate.
+
+## What's not here yet
+
+- **Refresh of the older schema drafts.** [`schemas/`](./schemas/)
+  contains earlier drafts of the webhook event schema, the
+  handover briefing schema, the personal-agent response schema,
+  and a pre-audit format note. Those predate the 6×2
+  directionality update; they need a refresh, but the refresh
+  waits on the meeting outcome so we don't churn the docs twice.
+- **Code.** None. Sketch level only. Code follows once contracts
   settle.

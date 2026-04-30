@@ -1,45 +1,48 @@
 # routing/
 
 Where routing decisions live. A routing decision answers one
-question: *this incoming event — which agent(s) should see it, and
-in what role?* Routing is upstream of `../chat/` (which renders
-and delivers) and `../orchestration/` (which wakes the chosen
-agents).
+question: *this incoming event — which agent(s) should see it,
+and in what role?* Routing sits upstream of `../chat/` (which
+renders and delivers messages to humans) and `../orchestration/`
+(which wakes the agents that were chosen).
 
 ## What gets routed
 
-Discord (or whatever GuildBot edge surface we settle on) emits
-events: messages, reactions, mentions, channel-joins. Each event
-needs a destination set:
+The Discord bot emits events into this system: messages,
+reactions, mentions, channel-joins. Each event needs a
+**destination set** — the list of agents that should receive it.
+Three common patterns:
 
-- **direct mention** of a personal agent → that participant's
+- **Direct mention** of a personal agent → that participant's
   personal agent only.
-- **broadcast in a forest channel** → every personal agent
+- **Broadcast in a forest channel** → every personal agent
   subscribed to that channel; each decides independently whether
   to surface it to its human.
-- **system event** (join/leave/topic-change) → the forest's
-  ambient state, possibly fan-out to all personal agents.
+- **System event** (join, leave, topic change) → updates ambient
+  state, possibly fanned out to all personal agents.
 
 The routing module produces a `(event, [destinations])` pair. It
-does not deliver and it does not wake — it decides.
+does not deliver the event and it does not wake the agents — it
+only decides who should be reached.
 
 ## Does the orchestrator live here?
 
-Open question. Two shapes:
+Open question. Two shapes are on the table:
 
 - **Stateless router.** Routing is a pure function called by the
-  webhook handler. No long-running process. Cleanest if every
-  routing decision is local to a single event.
+  Discord webhook handler — no long-running process. Cleanest if
+  every routing decision can be made from the event alone.
 - **Orchestrator daemon.** A long-running process that holds
-  cross-event state — rate limits, deduplication, fan-in
-  windows, "this user already saw this in another channel."
-  Necessary if routing depends on memory of recent events.
+  cross-event state — rate limits, deduplication windows, "this
+  user already saw this in another channel" memory. Necessary
+  only if routing depends on what happened in *previous* events.
 
-**Recommended lean: start stateless.** For the 2-week MVP, every
-event we know about is locally decidable. If we discover routing
-needs cross-event memory (e.g., "don't double-deliver the same
-broadcast across overlapping channels"), promote to a daemon
-later. The daemon, if it materializes, lives in this module.
+**Recommendation: start stateless.** For the 2-week MVP, every
+event we currently know about is locally decidable from the
+event itself. If we discover routing needs cross-event memory
+(e.g., "don't double-deliver the same broadcast across
+overlapping channels"), promote to a daemon later. If the
+daemon does materialize, it lives in this module.
 
 ## How routing interacts with the rest
 
@@ -47,12 +50,14 @@ later. The daemon, if it materializes, lives in this module.
 Discord event → [ routing/ ] → (event, [agent-ids])
                      │
                      ▼
-              [ orchestration/ ] wakes chosen agents
+              [ orchestration/ ] wakes the chosen agents
                      │
                      ▼
-              [ chat/ ] delivers rendered surface
+              [ chat/ ] delivers the rendered surface
 ```
 
-`routing/` knows agent identities and channel subscriptions. It
-does not know how agents are spawned or how they render. Reads
-the registry the orchestrator maintains; writes nothing back.
+`routing/` knows about agent identities and which agents are
+subscribed to which channels. It does not know how agents are
+spawned or how their output is rendered. It reads from the
+agent registry that `orchestration/` maintains, and writes
+nothing back.

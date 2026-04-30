@@ -1,58 +1,74 @@
 # orchestration/
 
-How knowledge-forest-poc agents are run. Owns process lifecycle —
-spawning, waking, sleeping. Does not own what agents *do*
-(`../agents/`) or how messages are delivered (`../chat/`).
+How the agents in this project are run. This module owns process
+lifecycle — spawning, waking, sleeping. It does not own what the
+agents *do* (`../agents/`) or how messages reach humans
+(`../chat/`).
 
-## Operating model (Julian's lean)
+## Operating model
 
-One Claude Code subscription key, multiple tmux sessions. Each
-agent identity is a long-running tmux session running a `claude`
-REPL in its own working dir. Spawning an agent = render template
-into a per-agent dir, start a tmux session, run `claude`. Waking
-an agent = send keystrokes to its tmux session. Same operational
-shape as metasphere; we borrow the model, not the code.
+One subscription to **Claude Code** (Anthropic's terminal-based
+coding agent that runs from your shell), shared across all
+agents. Each agent identity is a long-running session inside
+**tmux** (a terminal multiplexer that keeps shell sessions alive
+in the background). Spawning an agent: render its template into
+a per-agent directory, start a tmux session, run `claude` inside
+it. Waking an agent: send keystrokes into that session.
+
+The reason for one tmux session per agent is observability. A
+human can attach to any session and watch the agent's reasoning
+stream live — useful during the atlasresearch trial when we want
+to see *why* a personal agent surfaced (or didn't surface)
+something.
 
 ## Per-agent layout & templates
 
-Each agent gets `~/.kf-poc/agents/<agent-id>/` with `AGENTS.md`
-(persona, rendered from template), `state/` (self-writes), and
-`inbox/` (queued messages). Templates live in
-`orchestration/templates/<agent-type>/`; at spawn, the orchestrator
-copies the template in and substitutes `<agent-id>`, the human
-owner's display name, and per-instance config.
+Each agent gets a directory under
+`~/.knowledge-forest/agents/<agent-id>/` containing `AGENTS.md`
+(persona + instructions, rendered from a template), `state/`
+(self-writes), and `inbox/` (messages queued for the next wake).
+Templates live in `orchestration/templates/<agent-type>/`. At
+spawn, the orchestrator copies the template in and substitutes
+`<agent-id>`, the human owner's display name, and per-instance
+config.
 
-## Personal-agent-N
+## Personal agents (one per participant)
 
-Each atlasresearch participant gets a dedicated **personal agent**
-spawned at onboarding. It's the participant's proxy in the
-forest — consumes incoming events on their behalf, applies their
-context frame, decides what surfaces. 1:1 with humans. Template
-under `orchestration/templates/personal/`.
+Each atlasresearch participant gets a dedicated **personal
+agent** spawned at onboarding — the participant's proxy in the
+forest. It consumes incoming events on their behalf, applies
+their context frame, and decides what surfaces. 1:1 with humans.
+Template at `orchestration/templates/personal/`.
 
 ## Lifecycle
 
-- **spawn** — render template, create per-agent dir, start tmux,
-  run `claude`. One-time per identity.
-- **wake** — REPL idle; push next message into the prompt.
-- **sleep** — REPL turn finishes; tmux session stays alive.
+- **spawn** — render template, create directory, start tmux, run
+  `claude`. One-time per identity.
+- **wake** — push the next message into the idle prompt.
+- **sleep** — turn finishes; tmux session stays alive.
 - **respawn** — only on state wipe or template change.
 
 ## OPEN QUESTION — harness architecture
 
-Julian's lean is claude-code-key + tmux. Alternatives worth naming:
+The recommendation is Claude Code + tmux (above). Alternatives
+worth naming before we commit:
 
-- **Anthropic API direct.** Stateless calls, we own the history.
-  Wins: programmatic, scales past local tmux. Loses: no
-  observable REPL; we re-implement what Claude Code already does.
-- **Claude Agent SDK.** Managed agents, server-side persistence.
-  Wins: built-in memory, no tmux. Loses: less visibility, newer
-  surface, may not match the 2-week MVP timeline.
-- **One shared session, prefix-routed.** Single Claude Code
-  instance; `@personal-jane` routed internally. Wins: cheapest.
-  Loses: collapses agent identities into one context window —
-  defeats the per-participant proxy model.
+- **Call Anthropic's HTTP API directly, no Claude Code wrapper.**
+  Each agent turn is a stateless API call; we manage history
+  ourselves. Wins on programmatic control and scale; loses the
+  observable REPL and forces us to re-implement what Claude Code
+  already gives us (tool use, subagents, hooks).
+- **Anthropic's Claude Agent SDK.** Long-lived agents managed by
+  Anthropic, persisted server-side. Wins on built-in memory and
+  no tmux to manage; loses local visibility, and the surface is
+  newer than the 2-week timeline really wants.
+- **One shared Claude Code session, prefix-routed.** A single
+  `claude` process; messages get prefixed by recipient and
+  routed internally. Cheapest to start, but collapses every
+  agent's identity into one context window — defeats the
+  per-participant proxy model entirely.
 
-**Recommended: tmux.** atlasresearch wants human-observable agent
-reasoning during sessions; tmux gives us that for free. Revisit
-if we hit session limits or the audience never opens the REPLs.
+**Recommendation: Claude Code + tmux.** The atlasresearch trial
+benefits from human-observable agent reasoning during sessions;
+this approach gives us that for free. Revisit if we hit tmux
+session limits or if no one ever opens the REPLs.

@@ -2,40 +2,49 @@
 
 ## What this module does
 
-Stores the append-only history of what happens to each shared
+Stores the running history of what happens to each shared
 resource. Every share, every keep, every "I added context later"
-reply becomes another entry on the resource's log.
+reply becomes another entry on that resource's log.
 
-The metaphor is a git commit log: each event is a commit, with a
-timestamp, an author (the agent that emitted it), a parent ref
-to the previous event on this resource, and a body that is the
-context frame at that moment.
+The metaphor is a git commit log. Each event is a commit on the
+resource: a timestamp, an author (the agent or human that
+emitted it), a parent reference to the previous event on this
+resource, and a body that is the six-dimension context frame at
+that moment.
 
-For the POC: linear history per resource, no branching (Q1).
+For the POC: linear history per resource, no branching.
 
 ## What lives here (sketch)
 
-- An event store keyed by resource URI
-- Two event types in the POC: `sharing.event` and `keep.event`
-- Both carry the same context-frame shape (see `schema/`),
-  populated from sender or recipient perspective
-- Replies on the share's Discord thread (see `chat/`) become
-  additional context events on the same log
+- An event store keyed by resource URL
+- Two event types in the POC:
+  - `sharing.event` — emitted when someone first shares a resource
+  - `keep.event` — emitted when a recipient saves the resource
+    into their personal knowledge garden
+- Both events carry the same six-dimension frame, populated from
+  the emitter's perspective (sharer for `sharing.event`, recipient
+  for `keep.event`)
+- Replies on the share's Discord thread (see
+  [`../chat/`](../chat/)) become additional context events on the
+  same log
 
 ## Who talks to it
 
-- `chat/` writes events when something is shared in Discord, or
-  when a thread reply adds context
-- `agents/` (supervisor + personal agents) write events when they
-  keep a resource into the personal knowledge garden
-- `fingerprint/` reads events to compute channel + user snapshots
+- [`chat/`](../chat/) writes events when a share is posted in
+  Discord, or when a thread reply adds context
+- [`agents/`](../agents/) write events when they keep a resource
+  into the personal knowledge garden
+- [`fingerprint/`](../fingerprint/) reads events to compute the
+  channel and per-user state snapshots
 
 ## Open questions
 
-- **Storage shape**: one markdown file per resource (append-only),
-  jsonl, or SQLite? Default leaning is file-based per metasphere's
-  observability principle. Decide once we know how `fingerprint/`
-  reads it.
-- **Multi-resource share events**: Christina's "article + draft
-  map shared together" case — one event with N resource refs, or
-  N parallel events? Defer.
+- **Storage shape.** One markdown file per resource (append-only),
+  JSON Lines, or a small SQLite database? Default leaning is
+  file-based — easy to inspect by eye, easy to commit to a
+  private GitHub repo, easy to audit. Decide once we know how
+  `fingerprint/` reads it.
+- **Multi-resource share events.** Sometimes someone shares two
+  things at once (e.g. an article and a related draft map). Do
+  we emit one event with multiple resource references, or N
+  parallel events? Defer.
