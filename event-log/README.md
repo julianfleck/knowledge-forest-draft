@@ -34,8 +34,11 @@ For the POC: linear history per resource, no branching.
   Discord, or when a thread reply adds context
 - [`agents/`](../agents/) write events when they keep a resource
   into the personal knowledge garden
-- [`fingerprint/`](../fingerprint/) reads events to compute the
-  channel and per-user state snapshots
+- [`parser/`](../parser/) writes a parsed-resource record onto
+  each share event — the body, tags, keywords, and named entities
+  that populate Layer 2 of `what`
+- [`fingerprint/`](../fingerprint/) reads parsed-resource records
+  off the log to maintain the channel and per-user fingerprints
 
 ## Open questions
 
@@ -43,7 +46,8 @@ For the POC: linear history per resource, no branching.
   JSON Lines, or a small SQLite database? Default leaning is
   file-based — easy to inspect by eye, easy to commit to a
   private GitHub repo, easy to audit. Decide once we know how
-  `fingerprint/` reads it.
+  `parser/` writes parsed records and how `fingerprint/` reads
+  them back.
 - **Multi-resource share events.** Sometimes someone shares two
   things at once (e.g. an article and a related draft map). Do
   we emit one event with multiple resource references, or N

@@ -12,8 +12,8 @@ how this resource looks from where you're standing.
 | **who** | string | automatic | The sharer (agent ID or Discord username) | The receiver(s) |
 | **when** | ISO-8601 UTC timestamp | automatic | The share timestamp | The phase the resource is in (draft, published, etc.) |
 | **why** | string \| null | **manual** | The sharer's written rationale. `null` until filled. | Context — the derived sense of why this matters in this group |
-| **what** | string | automatic | The resource URL | Context — derived from tags / keywords / topics extracted from the resource |
-| **where** | string | automatic | The channel the resource was shared in | Semantic match against the group fingerprint or the personal fingerprint (see below) |
+| **what** | string | automatic | The resource URL | Context — tags / keywords / topics extracted from the resource by [`../parser/`](../parser/) |
+| **where** | string | automatic | The channel the resource was shared in | Semantic match against the channel fingerprint or the user fingerprint, computed by [`../fingerprint/`](../fingerprint/) (see below) |
 | **how** | string | automatic | Relevance with respect to personal context or group context | Subjective content — the reading lens, the activities/verbs the resource implies |
 
 `why` is the only field a human writes. The other five are
@@ -44,19 +44,23 @@ perspective.
 - **Layer 1 — the channel.** Plain: which Discord channel was the
   resource shared in.
 - **Layer 2 — the semantic match.** A score (or short text) for
-  how well the resource overlaps with the **group fingerprint**
+  how well the resource overlaps with the **channel fingerprint**
   (when the supervisor is reading on behalf of the channel) or
-  the **personal fingerprint** (when a personal agent is reading
-  on behalf of its human).
+  the **user fingerprint** (when a personal agent is reading on
+  behalf of its human).
 
-The Layer 2 score is a roll-up: the tags, keywords, and named
-entities the channel or person mentions most often, compared
-against the tags, keywords, and named entities surfaced by this
-specific resource. High overlap → high score. Low overlap → low
-score.
+The Layer 2 score is a comparison: the tags, keywords, and named
+entities the channel or person mentions most often (the per-target
+fingerprint), against the tags, keywords, and named entities
+[`../parser/`](../parser/) extracted from this specific resource.
+High overlap → high score. Low overlap → low score.
 
-The fingerprint module (`../fingerprint/`) owns how the
-fingerprints themselves are computed and kept up to date.
+The split between the two modules: [`../parser/`](../parser/)
+owns the per-resource extraction (one URL → one parsed record);
+[`../fingerprint/`](../fingerprint/) owns both the per-target
+roll-up of those records over time and the match step that
+compares an incoming parsed record against the relevant
+fingerprint.
 
 ## Open questions
 

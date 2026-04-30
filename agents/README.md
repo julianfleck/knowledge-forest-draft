@@ -36,8 +36,12 @@ are actually spawned and run is the
 - [`chat/`](../chat/) is where outputs land (DMs, thread replies)
 - [`event-log/`](../event-log/) is what they emit when they keep
   something
-- [`fingerprint/`](../fingerprint/) provides the snapshots they
-  reason against
+- [`parser/`](../parser/) provides the per-resource parsed
+  record (text, tags, keywords, named entities) for each
+  incoming share event
+- [`fingerprint/`](../fingerprint/) provides the per-channel /
+  per-user snapshot they reason against, plus the Layer 2
+  `where` match score for each parsed resource
 
 ## Decisions
 

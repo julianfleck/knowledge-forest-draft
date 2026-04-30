@@ -15,22 +15,16 @@ how it talks to the others.
 
 | Module | Owner | What it does |
 |--------|-------|--------------|
-| [`schemas/`](./schemas/) | Julian | The shared shapes — the six-dimension context frame, webhook event payloads, agent handover briefings |
+| [`schemas/`](./schemas/) | All | The shared shapes — the six-dimension context frame, webhook event payloads, agent handover briefings |
 | [`routing/`](./routing/README.md) | Julian | Decides which agent handles which incoming event |
 | [`orchestration/`](./orchestration/README.md) | Julian | Spawns and runs the agents (one persistent terminal session per agent) |
-| [`agents/`](./agents/README.md) | Christina | The supervisor + per-user personal agent templates |
-| [`fingerprint/`](./fingerprint/README.md) | Christina | Per-channel and per-user semantic snapshots that drive matching |
+| [`agents/`](./agents/README.md) | Christina/Julian | The supervisor + per-user personal agent templates |
+| [`parser/`](./parser/README.md) | Christina/Julian | Reads a shared resource and extracts its content, tags, keywords, and named entities |
+| [`fingerprint/`](./fingerprint/README.md) | Christina/Julian | Reasons over parsed resources in a channel or user context — rolling snapshots + per-resource match scores |
 | [`chat/`](./chat/README.md) | Corey | Discord client + the thread-per-share-event bridge |
-| [`event-log/`](./event-log/README.md) | Corey | Append-only history of what happened to each shared resource |
+| [`event-log/`](./event-log/README.md) | Corey | Append-only history of what happened to each shared resource + webhook |
 
-Ownership is the **action lead** for the module — who advances the
-design and the implementation. This is a starting allocation; if
-something feels mis-cast, swap in the meeting. The split is meant
-to put each person on the surfaces they're already most engaged
-with: Christina on the meaning-axis (the agent's reasoning + the
-fingerprint roll-up), Corey on the engineering surfaces (the bot
-+ the storage log), Julian on the integration shapes + how
-everything is run.
+Ownership is the **action lead** for the module. The split is meant to put each person on the surfaces they're already most engaged with: Christina on the meaning-axis (the agent's reasoning + the per-resource parse + the fingerprint roll-up), Corey on the engineering surfaces (the bot + the storage log), Julian on the integration shapes + how everything is run.
 
 ## Decisions to date
 
@@ -57,43 +51,42 @@ Each open question lives in the relevant README. Quick index:
 - **Frame recursion** — should a `why` value itself be parseable
   as a nested frame, capped at one layer? See
   [`schemas/six-dim-frame.md`](./schemas/six-dim-frame.md).
+- **Parser shape** — library extractors vs language-model read
+  for the per-resource content + tag pass? See
+  [`parser/README.md`](./parser/README.md). Julian's current
+  lean: library-only with a language-model fallback when the
+  extractor returns a suspiciously short body.
 - **Fingerprint shape** — keyword list vs language-model
-  interpretation vs hybrid? See
+  interpretation vs hybrid for the per-target roll-up over the
+  parser's output? See
   [`fingerprint/README.md`](./fingerprint/README.md). Julian's
   current lean: language-model interpretation, simpler to
   achieve.
 - **Harness architecture** — terminal-session-per-agent is the
   current recommendation; alternatives are sketched. See
   [`orchestration/README.md`](./orchestration/README.md).
-- **Module shape itself** — is this 7-module split right?
-  Should `event-log/` fold into `chat/`? Should `fingerprint/`
-  fold into `agents/`? Worth a 5-minute discussion.
+- **Module shape itself** — is this 8-module split right?
+  Should `event-log/` fold into `chat/`? Should `parser/` fold
+  back into `fingerprint/`? Should `fingerprint/` fold into
+  `agents/`? Worth a 5-minute discussion.
 
-## Module shape — the proposal vs Julian's initial sketch
+## Module shape
 
 Julian's first sketch named four modules (`routing/`,
 `orchestration/`, `agents/`, `chat/`) plus an open *what else?*
-This proposal adds three more:
+This proposal adds four more:
 
 - `schemas/` — kept as its own folder because the integration
   shapes are the load-bearing artifacts; humans and agents both
   read them.
 - `event-log/` — surfaced explicitly in the meeting as a needed
   storage layer (the "git-commit-log per resource" shape).
+- `parser/` — the per-resource read. Splitting it out from
+  `fingerprint/` keeps per-resource extraction (one URL → one
+  parsed record) separate from the per-target reasoning that
+  uses those records.
 - `fingerprint/` — surfaced in the meeting as the source of the
-  semantic match in the `where` Layer 2.
+  semantic match in the `where` Layer 2; reasons over the
+  parser's output, given a channel or user context.
 
-If two of these feel over-modularized at meeting-time, the
-fold-in candidates are: `event-log/` → `chat/`, and
-`fingerprint/` → `agents/`. `schemas/` should stay separate.
-
-## What's not here yet
-
-- **Refresh of the older schema drafts.** [`schemas/`](./schemas/)
-  contains earlier drafts of the webhook event schema, the
-  handover briefing schema, the personal-agent response schema,
-  and a pre-audit format note. Those predate the 6×2
-  directionality update; they need a refresh, but the refresh
-  waits on the meeting outcome so we don't churn the docs twice.
-- **Code.** None. Sketch level only. Code follows once contracts
-  settle.
+If this feels over-modularized, the fold-in candidates are: `event-log/` → `chat/`, `parser/` → `fingerprint/` (collapses the split), and `fingerprint/` → `agents/` (if we go the llm-route, this is essentially a scheduled agent).
