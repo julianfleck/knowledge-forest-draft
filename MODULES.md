@@ -19,7 +19,8 @@ how it talks to the others.
 | [`routing/`](./routing/README.md) | Julian | Decides which agent handles which incoming event |
 | [`orchestration/`](./orchestration/README.md) | Julian | Spawns and runs the agents (one persistent terminal session per agent) |
 | [`agents/`](./agents/README.md) | Christina/Julian | The supervisor + per-user personal agent templates |
-| [`parser/`](./parser/README.md) | Christina/Julian | Reads a shared resource and extracts its content, tags, keywords, and named entities |
+| [`crawler/`](./crawler/README.md) | Julian | Fetches a URL or local file and returns it as structured markdown — two-tier HTML strategy, per-format adapters (PDF, Office, text) |
+| [`parser/`](./parser/README.md) | Christina/Julian | Reasons over the crawler's markdown — summary, embedding, tags, keywords, named entities |
 | [`fingerprint/`](./fingerprint/README.md) | Christina/Julian | Reasons over parsed resources in a channel or user context — rolling snapshots + per-resource match scores |
 | [`chat/`](./chat/README.md) | Corey | Discord client + the thread-per-share-event bridge |
 | [`event-log/`](./event-log/README.md) | Corey | Append-only history of what happened to each shared resource + webhook |
@@ -52,10 +53,10 @@ Each open question lives in the relevant README. Quick index:
   as a nested frame, capped at one layer? See
   [`schemas/six-dim-frame.md`](./schemas/six-dim-frame.md).
 - **Parser shape** — library extractors vs language-model read
-  for the per-resource content + tag pass? See
+  for the summary + tag pass over the crawler's markdown? See
   [`parser/README.md`](./parser/README.md). Julian's current
-  lean: library-only with a language-model fallback when the
-  extractor returns a suspiciously short body.
+  lean: a single language-model pass for summary + tags, library
+  extractors for keywords / NER.
 - **Fingerprint shape** — keyword list vs language-model
   interpretation vs hybrid for the per-target roll-up over the
   parser's output? See
@@ -65,28 +66,34 @@ Each open question lives in the relevant README. Quick index:
 - **Harness architecture** — terminal-session-per-agent is the
   current recommendation; alternatives are sketched. See
   [`orchestration/README.md`](./orchestration/README.md).
-- **Module shape itself** — is this 8-module split right?
-  Should `event-log/` fold into `chat/`? Should `parser/` fold
-  back into `fingerprint/`? Should `fingerprint/` fold into
-  `agents/`? Worth a 5-minute discussion.
+- **Module shape itself** — is this 9-module split right?
+  Should `event-log/` fold into `chat/`? Should `crawler/` fold
+  into `parser/`? Should `parser/` fold back into
+  `fingerprint/`? Should `fingerprint/` fold into `agents/`?
+  Worth a 5-minute discussion.
 
 ## Module shape
 
 Julian's first sketch named four modules (`routing/`,
 `orchestration/`, `agents/`, `chat/`) plus an open *what else?*
-This proposal adds four more:
+This proposal adds five more:
 
 - `schemas/` — kept as its own folder because the integration
   shapes are the load-bearing artifacts; humans and agents both
   read them.
 - `event-log/` — surfaced explicitly in the meeting as a needed
   storage layer (the "git-commit-log per resource" shape).
-- `parser/` — the per-resource read. Splitting it out from
-  `fingerprint/` keeps per-resource extraction (one URL → one
-  parsed record) separate from the per-target reasoning that
-  uses those records.
+- `crawler/` — the fetch-and-format layer. Pulled out of
+  `parser/` once it became clear that "URL → clean markdown"
+  (network, headless browser fallback, per-format conversion) is
+  a self-contained concern with its own library zoo, while
+  "markdown → summary + embedding + tags" is the actual parsing.
+- `parser/` — the per-resource read over the crawler's
+  markdown. Splitting it out from `fingerprint/` keeps per-
+  resource extraction (one URL → one parsed record) separate
+  from the per-target reasoning that uses those records.
 - `fingerprint/` — surfaced in the meeting as the source of the
   semantic match in the `where` Layer 2; reasons over the
   parser's output, given a channel or user context.
 
-If this feels over-modularized, the fold-in candidates are: `event-log/` → `chat/`, `parser/` → `fingerprint/` (collapses the split), and `fingerprint/` → `agents/` (if we go the llm-route, this is essentially a scheduled agent).
+If this feels over-modularized, the fold-in candidates are: `event-log/` → `chat/`, `crawler/` → `parser/` (collapses the fetch/reason split), `parser/` → `fingerprint/` (collapses the read/roll-up split), and `fingerprint/` → `agents/` (if we go the llm-route, this is essentially a scheduled agent).

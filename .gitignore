@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Conductor workspace state (already gitignored at parent level, kept for clarity)
+.context/
+
+# Local-only trash bin
+TRASH/
+TRASH-FILES.md
