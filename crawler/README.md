@@ -43,16 +43,25 @@ For each input:
 
 ## Output shape
 
+`CrawledResource` is the handoff contract from `crawler/` to
+`parser/` — it lives in [`schemas/`](../schemas/) alongside the
+other cross-module shapes:
+
 ```python
-@dataclass
-class CrawledResource:
-    url: str               # http(s):// or file://
-    source_format: str     # "html" | "pdf" | "docx" | "xlsx" | "pptx" | "md" | "txt"
+from schemas import CrawledResource, SourceMetadata
+
+class CrawledResource(BaseModel):
+    url: str                       # http(s):// or file://
+    source_format: SourceFormat    # "html" | "pdf" | "docx" | "xlsx" | "pptx" | "md" | "txt"
     markdown: str
-    metadata: dict         # title, author, published_at, site_name (best-effort)
     fetched_at: datetime
-    fetch_method: str      # "static" | "rendered" | "direct" | "local"
+    fetch_method: FetchMethod      # "static" | "rendered" | "direct" | "local"
+    metadata: SourceMetadata       # title, author, published_at, site_name, ... (best-effort)
 ```
+
+`SourceMetadata` accepts arbitrary extra fields so format-specific
+adapters can attach things like `page_count` for PDFs without
+requiring a schema change.
 
 ## Library choices
 

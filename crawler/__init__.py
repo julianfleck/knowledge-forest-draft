@@ -3,7 +3,9 @@
 Public surface:
 
     from crawler import Crawler
-    resource = Crawler().fetch("https://example.com/article")
+    from schemas import CrawledResource
+
+    resource: CrawledResource = Crawler().fetch("https://example.com/article")
     resource = Crawler().fetch("/path/to/document.pdf")
 
 ``Crawler.fetch`` returns a ``CrawledResource`` containing the resource as
@@ -21,10 +23,10 @@ from pathlib import Path
 from crawler.adapters import get_adapter
 from crawler.adapters.html import HtmlAdapter
 from crawler.fetcher import download_binary, fetch_html
-from crawler.models import CrawledResource
 from crawler.sniff import sniff_from_content_type, sniff_from_extension
+from schemas import CrawledResource
 
-__all__ = ["Crawler", "CrawledResource"]
+__all__ = ["Crawler"]
 
 
 class Crawler:
